@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Bell,
+  Check,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
@@ -20,6 +21,7 @@ import { db } from './database/db'
 import type { Quadrant, ReminderRecurrence, Task } from './types/task'
 import { calculateQuadrant } from './utils/quadrant'
 import { dueStatus, localDateInputValue, nextReminderTime, reminderLabel } from './utils/taskDates'
+import { authConfigured, signInWithEmail, signInWithGoogle, signOut, signUpWithEmail, subscribeToAuth } from './services/auth'
 import './App.css'
 
 const navigation = [
@@ -43,6 +45,12 @@ function App() {
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('focusmatrix-display-name') ?? 'Jordan')
   const [profileName, setProfileName] = useState(displayName)
   const [isProfileOpen, setProfileOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authMessage, setAuthMessage] = useState('')
+  const [isAuthBusy, setAuthBusy] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [isTaskModalOpen, setTaskModalOpen] = useState(false)
   const [taskTitle, setTaskTitle] = useState('')
   const [urgent, setUrgent] = useState(false)
@@ -55,6 +63,8 @@ function App() {
   useEffect(() => {
     void db.tasks.orderBy('createdAt').reverse().toArray().then(setTasks)
   }, [])
+
+  useEffect(() => subscribeToAuth((session) => setUserEmail(session?.user.email ?? null)), [])
 
   useEffect(() => {
     const checkReminders = async () => {
@@ -109,6 +119,20 @@ function App() {
     setProfileOpen(false)
   }
 
+  async function handleGoogleSignIn() {
+    setAuthBusy(true); setAuthMessage('')
+    try { await signInWithGoogle() } catch (error) { setAuthMessage(error instanceof Error ? error.message : 'Unable to start Google sign-in.') } finally { setAuthBusy(false) }
+  }
+
+  async function handleEmailAuth(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setAuthBusy(true); setAuthMessage('')
+    try {
+      const result = authMode === 'signin' ? await signInWithEmail(authEmail, authPassword) : await signUpWithEmail(authEmail, authPassword)
+      if (result.error) throw result.error
+      setAuthMessage(authMode === 'signin' ? 'Signed in successfully.' : 'Account created. Check your email to confirm it.')
+    } catch (error) { setAuthMessage(error instanceof Error ? error.message : 'Authentication failed.') } finally { setAuthBusy(false) }
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -147,7 +171,7 @@ function App() {
           <div className="breadcrumb"><span>Workspace</span><ChevronRight size={14} /><strong>{activeSection}</strong></div>
           <div className="topbar-actions">
             <span className="offline-status"><span className="privacy-dot" />Offline ready</span>
-            <button className="avatar" type="button" aria-label="Edit profile name" onClick={() => { setProfileName(displayName); setProfileOpen(true) }}>{displayName.slice(0, 2).toUpperCase()}</button>
+            <button className="avatar" type="button" aria-label="Open profile and account" onClick={() => { setProfileName(displayName); setProfileOpen(true) }}>{displayName.slice(0, 2).toUpperCase()}</button>
           </div>
         </header>
 
@@ -156,7 +180,7 @@ function App() {
           <section className="welcome-row">
             <div>
               <p className="eyebrow">Tuesday, September 8, 2026</p>
-              <h1>Good morning, Jordan<span className="title-dot">.</span></h1>
+              <h1>Good morning, {displayName}<span className="title-dot">.</span></h1>
               <p className="welcome-copy">Make room for what matters. Your day starts here.</p>
             </div>
             <button className="primary-button" type="button" onClick={() => setTaskModalOpen(true)}><Plus size={18} />New task <kbd>N</kbd></button>
@@ -192,6 +216,7 @@ function App() {
       </main>
       {isTaskModalOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setTaskModalOpen(false)}><div className="task-modal" role="dialog" aria-modal="true" aria-labelledby="new-task-title"><div className="modal-heading"><div><p className="eyebrow">Capture the next thing</p><h2 id="new-task-title">New task</h2></div><button className="modal-close" type="button" aria-label="Close new task dialog" onClick={() => setTaskModalOpen(false)}>×</button></div><form onSubmit={(event) => void createTask(event)}><label htmlFor="task-title">Task title</label><input id="task-title" autoFocus value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="What needs your attention?" /><div className="date-fields"><div><label htmlFor="task-due-date">Due date</label><input id="task-due-date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></div><div><label htmlFor="task-reminder-time">Reminder time</label><input id="task-reminder-time" type="time" value={reminderTime} onChange={(event) => setReminderTime(event.target.value)} disabled={!reminderEnabled} /></div></div><div className="modal-options"><label className="check-option"><input type="checkbox" checked={urgent} onChange={(event) => setUrgent(event.target.checked)} />Urgent</label><label className="check-option"><input type="checkbox" checked={important} onChange={(event) => setImportant(event.target.checked)} />Important</label><label className="check-option"><input type="checkbox" checked={reminderEnabled} onChange={(event) => setReminderEnabled(event.target.checked)} /><Bell size={13} />Reminder</label></div>{reminderEnabled && <div className="recurrence-field"><label htmlFor="reminder-recurrence">Repeat reminder</label><select id="reminder-recurrence" value={reminderRecurrence} onChange={(event) => setReminderRecurrence(event.target.value as ReminderRecurrence)}><option value="NONE">Once</option><option value="DAILY">Daily</option><option value="WEEKLY">Weekly</option><option value="MONTHLY">Monthly</option></select><small>Notifications stay local and only run while FocusMatrix is open.</small></div>}<p className="quadrant-preview">This will land in <strong>{focusAreas.find((area) => area.quadrant === calculateQuadrant(urgent, important))?.label}</strong>. Due <strong>{dueDate}</strong>{reminderEnabled && <> with a reminder at <strong>{reminderTime}</strong>.</>}</p><div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setTaskModalOpen(false)}>Cancel</button><button className="primary-button" type="submit" disabled={!taskTitle.trim()}>Create task</button></div></form></div></div>}
       {isProfileOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setProfileOpen(false)}><div className="task-modal profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-title"><div className="modal-heading"><div><p className="eyebrow">Personalize your workspace</p><h2 id="profile-title">Edit your name</h2></div><button className="modal-close" type="button" aria-label="Close profile dialog" onClick={() => setProfileOpen(false)}>×</button></div><form onSubmit={saveProfile}><label htmlFor="display-name">Display name</label><input id="display-name" autoFocus value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Your name" /><div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setProfileOpen(false)}>Cancel</button><button className="primary-button" type="submit" disabled={!profileName.trim()}>Save name</button></div></form></div></div>}
+      {isProfileOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setProfileOpen(false)}><div className="task-modal profile-modal account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title"><div className="modal-heading"><div><p className="eyebrow">Account</p><h2 id="account-title">Your profile</h2></div><button className="modal-close" type="button" aria-label="Close account dialog" onClick={() => setProfileOpen(false)}>×</button></div><form onSubmit={saveProfile}><label htmlFor="display-name">Display name</label><input id="display-name" value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="Your name" /><div className="modal-actions"><button className="secondary-button" type="submit"><Check size={15} />Save name</button></div></form><div className="account-divider" /><p className="eyebrow">Cloud account</p>{userEmail ? <div className="account-signed-in"><span>{userEmail}</span><button className="secondary-button" type="button" onClick={() => void signOut()}>Sign out</button></div> : <>{!authConfigured && <p className="auth-note">Offline mode is active. Add Supabase settings to enable sign-in.</p>}<button className="google-button" type="button" disabled={!authConfigured || isAuthBusy} onClick={() => void handleGoogleSignIn()}>Continue with Google</button><div className="auth-switch"><button type="button" onClick={() => setAuthMode('signin')} className={authMode === 'signin' ? 'auth-tab selected' : 'auth-tab'}>Sign in</button><button type="button" onClick={() => setAuthMode('signup')} className={authMode === 'signup' ? 'auth-tab selected' : 'auth-tab'}>Create account</button></div><form onSubmit={(event) => void handleEmailAuth(event)}><label htmlFor="auth-email">Email</label><input id="auth-email" type="email" required value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" /><label htmlFor="auth-password">Password</label><input id="auth-password" type="password" minLength={6} required value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="At least 6 characters" /><button className="primary-button auth-submit" type="submit" disabled={!authConfigured || isAuthBusy}>{authMode === 'signin' ? 'Sign in with email' : 'Create account'}</button></form>{authMessage && <p className="auth-message">{authMessage}</p>}</>}</div></div>}
     </div>
   )
 }

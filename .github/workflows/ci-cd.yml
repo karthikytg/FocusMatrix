@@ -1,0 +1,75 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  ci:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  deploy:
+    name: Deploy to DigitalOcean
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Log in to DigitalOcean Container Registry
+        run: doctl registry login --expiry-seconds 1200
+
+      - name: Build and push immutable image
+        env:
+          IMAGE: registry.digitalocean.com/${{ vars.DOCR_REGISTRY }}/focusmatrix:${{ github.sha }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          docker build \
+            --build-arg VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \
+            --build-arg VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY" \
+            --tag "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Deploy image to App Platform
+        env:
+          DO_APP_ID: ${{ vars.DO_APP_ID }}
+          DOCR_REGISTRY: ${{ vars.DOCR_REGISTRY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          test -n "$DO_APP_ID" || (echo "Missing repository variable DO_APP_ID" && exit 1)
+          test -n "$DOCR_REGISTRY" || (echo "Missing repository variable DOCR_REGISTRY" && exit 1)
+          sed "s/__IMAGE_TAG__/$IMAGE_TAG/g; s/repository: focusmatrix/repository: focusmatrix/g" .do/app.yaml > /tmp/focusmatrix-app.yaml
+          doctl apps update "$DO_APP_ID" --spec /tmp/focusmatrix-app.yaml
