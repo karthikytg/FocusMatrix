@@ -37,6 +37,21 @@ const focusAreas: Array<{ label: string; quadrant: Quadrant; accent: string; hin
   { label: 'Eliminate', quadrant: 'ELIMINATE', accent: 'slate', hint: 'Not urgent + not important' },
 ]
 
+const dailyThoughts = [
+  'Small steps still move important work forward.',
+  'Choose the next useful action, then give it your full attention.',
+  'Progress becomes visible when you keep showing up.',
+  'Protect your attention for the work that matters most.',
+  'A clear priority is more powerful than a crowded to-do list.',
+  'You do not need to finish everything today; begin with what matters.',
+  'Make today lighter by deciding what does not need your energy.',
+]
+
+function getDailyThought(date = new Date()) {
+  const dayNumber = Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000)
+  return dailyThoughts[((dayNumber % dailyThoughts.length) + dailyThoughts.length) % dailyThoughts.length]
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState('Dashboard')
   const [tasks, setTasks] = useState<Task[]>([])
@@ -77,6 +92,7 @@ function App() {
   const completionRate = tasks.length === 0 ? 0 : Math.round((completedCount / tasks.length) * 100)
   const openTasks = useMemo(() => tasks.filter((task) => !task.completed), [tasks])
   const completedTasks = useMemo(() => tasks.filter((task) => task.completed), [tasks])
+  const dailyThought = getDailyThought()
 
   async function createTask(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -156,7 +172,7 @@ function App() {
           <section className="welcome-row">
             <div>
               <p className="eyebrow">Tuesday, September 8, 2026</p>
-              <h1>Good morning, Jordan<span className="title-dot">.</span></h1>
+              <h1>Good morning, {displayName}<span className="title-dot">.</span></h1>
               <p className="welcome-copy">Make room for what matters. Your day starts here.</p>
             </div>
             <button className="primary-button" type="button" onClick={() => setTaskModalOpen(true)}><Plus size={18} />New task <kbd>N</kbd></button>
@@ -175,7 +191,7 @@ function App() {
 
           <section className="lower-grid">
             <article className="empty-panel"><div className="panel-heading"><div><p className="eyebrow">Today</p><h2>Upcoming tasks</h2></div><ListTodo size={19} /></div>{openTasks.length ? <div className="task-list">{openTasks.slice(0, 5).map((task) => <div className="task-row" key={task.id}><button className="task-row-check" type="button" aria-label={`Complete ${task.title}`} onClick={() => void completeTask(task)}><span /></button><span className="task-name">{task.title}</span><small className={dueStatus(task)}>{task.dueDate ? new Date(`${task.dueDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}{task.reminderAt && <><span className="meta-separator">·</span><Bell size={12} /></>}</small><small>{focusAreas.find((area) => area.quadrant === task.quadrant)?.label}</small></div>)}</div> : <div className="empty-content"><div className="empty-icon"><CheckCircle2 size={22} /></div><h3>Your list is clear</h3><p>Capture a task whenever something important crosses your mind.</p><button className="secondary-button" type="button" onClick={() => setTaskModalOpen(true)}><Plus size={16} />Add your first task</button></div>}</article>
-            <article className="empty-panel focus-panel"><div className="panel-heading"><div><p className="eyebrow">A small ritual</p><h2>Today's focus</h2></div><Target size={19} /></div><div className="focus-quote"><span className="quote-mark">“</span><p>What would make today feel meaningful?</p><span className="quote-line" /></div><div className="focus-footer"><span>Set one intention to begin</span><button className="icon-button" type="button" aria-label="Set intention"><ChevronRight size={18} /></button></div></article>
+            <article className="empty-panel focus-panel"><div className="panel-heading"><div><p className="eyebrow">A small ritual</p><h2>Today's focus</h2></div><Target size={19} /></div><div className="focus-quote"><span className="quote-mark">“</span><p>{dailyThought}</p><span className="quote-line" /></div><div className="focus-footer"><span>One thought for today</span><span className="tomorrow-note">Changes tomorrow</span></div></article>
           </section>
           <section className="completed-panel">
             <div className="panel-heading"><div><p className="eyebrow">History</p><h2>Closed tasks</h2></div><CheckCircle2 size={19} /></div>
