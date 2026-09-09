@@ -17,6 +17,7 @@
   RotateCcw,
   Settings,
   Sparkles,
+  Square,
   Target,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -341,6 +342,13 @@ function renderLearningTree(
 function App() {
   const legacyPlannerSection: string = "__legacy-planner__";
   const [activeSection, setActiveSection] = useState("Dashboard");
+  const [plannerTab, setPlannerTab] = useState<
+    "Dashboard" | "Roadmaps" | "Calendar" | "Reports"
+  >(
+    () =>
+      (localStorage.getItem("focusmatrix-planner-tab") as
+        "Dashboard" | "Roadmaps" | "Calendar" | "Reports") ?? "Dashboard",
+  );
   const [selectedQuadrant, setSelectedQuadrant] = useState<Quadrant | null>(
     null,
   );
@@ -478,6 +486,13 @@ function App() {
       );
       return next;
     });
+  }
+
+  function selectPlannerTab(
+    tab: "Dashboard" | "Roadmaps" | "Calendar" | "Reports",
+  ) {
+    setPlannerTab(tab);
+    localStorage.setItem("focusmatrix-planner-tab", tab);
   }
 
   useEffect(() => {
@@ -1877,139 +1892,322 @@ function App() {
                         <div className="timer-summary-actions">
                           {activeTimer && !activeTimer.paused && (
                             <button
-                              className="icon-button"
+                              className="icon-button timer-summary-control"
                               type="button"
                               aria-label="Pause timer"
+                              title="Pause timer"
                               onClick={pauseStudyTimer}
                             >
-                              Pause
+                              <Pause size={14} />
                             </button>
                           )}
                           {activeTimer?.paused && (
                             <button
-                              className="icon-button"
+                              className="icon-button timer-summary-control"
                               type="button"
                               aria-label="Resume timer"
+                              title="Resume timer"
                               onClick={resumeStudyTimer}
                             >
-                              Resume
+                              <Play size={14} />
                             </button>
                           )}
                           {activeTimer && (
                             <button
-                              className="icon-button stop"
+                              className="icon-button stop timer-summary-control"
                               type="button"
                               aria-label="Stop timer"
+                              title="Stop timer"
                               onClick={() => void stopStudyTimer()}
                             >
-                              Stop
+                              <Square size={13} />
                             </button>
                           )}
                         </div>
                       </div>
-                      <div className="learning-dashboard-header">
-                        <div>
-                          <p className="eyebrow">Independent learning system</p>
-                          <h2>Learning Planner & Progress Tracker</h2>
-                          <p className="welcome-copy">
-                            Subject / Day / Topic / Timer / Session history /
-                            Progress
-                          </p>
-                        </div>
-                        <div className="learning-actions">
+                      <nav
+                        className="planner-tabs"
+                        aria-label="Planner sections"
+                      >
+                        {(
+                          [
+                            "Dashboard",
+                            "Roadmaps",
+                            "Calendar",
+                            "Reports",
+                          ] as const
+                        ).map((tab) => (
                           <button
-                            className="secondary-button"
+                            key={tab}
+                            className={
+                              plannerTab === tab
+                                ? "planner-tab active"
+                                : "planner-tab"
+                            }
                             type="button"
-                            onClick={() => {
-                              setLearningNodeType("subject");
-                              setLearningNodeParent(undefined);
-                              setNodeModalOpen(true);
-                            }}
+                            onClick={() => selectPlannerTab(tab)}
                           >
-                            Create Folder
+                            {tab}
                           </button>
-                          <button
-                            className="primary-button"
-                            type="button"
-                            onClick={() => setLearningModalOpen(true)}
-                          >
-                            <Plus size={18} />
-                            Plan session
-                          </button>
-                        </div>
-                      </div>
-                      <div className="learning-summary-grid">
-                        <div className="stat-card stat-highlight">
-                          <div className="stat-label">Planned study time</div>
-                          <div className="stat-value">
-                            {Math.round(totalPlanned / 60)}
-                            <span>h</span>
+                        ))}
+                      </nav>
+                      {plannerTab === "Dashboard" && (
+                        <div className="planner-dashboard-panel">
+                          <div className="learning-summary-grid">
+                            <div className="stat-card stat-highlight">
+                              <div className="stat-label">Active roadmaps</div>
+                              <div className="stat-value">
+                                {
+                                  learningNodes.filter(
+                                    (node) =>
+                                      node.type === "subject" &&
+                                      node.roadmapStatus !== "Completed",
+                                  ).length
+                                }
+                              </div>
+                            </div>
+                            <div className="stat-card">
+                              <div className="stat-label">Completed topics</div>
+                              <div className="stat-value">
+                                {
+                                  learningNodes.filter(
+                                    (node) =>
+                                      node.type === "topic" &&
+                                      node.status === "Completed",
+                                  ).length
+                                }
+                              </div>
+                            </div>
+                            <div className="stat-card">
+                              <div className="stat-label">Study sessions</div>
+                              <div className="stat-value">
+                                {studySessions.length}
+                              </div>
+                            </div>
+                            <div className="stat-card">
+                              <div className="stat-label">Overall progress</div>
+                              <div className="stat-value">
+                                {totalPlanned
+                                  ? Math.round(
+                                      (totalActual / totalPlanned) * 100,
+                                    )
+                                  : 0}
+                                <span>%</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="analytics-panel">
+                            <h3>Continue learning</h3>
+                            <p className="welcome-copy">
+                              {activeNode
+                                ? `Continue ${activeNode.name} - ${timerLabel(activeTimer?.elapsed ?? 0)} elapsed.`
+                                : "Select a roadmap, day, or topic from Roadmaps to continue."}
+                            </p>
+                            <button
+                              className="primary-button"
+                              type="button"
+                              onClick={() => selectPlannerTab("Roadmaps")}
+                            >
+                              Open Roadmaps
+                            </button>
                           </div>
                         </div>
-                        <div className="stat-card">
-                          <div className="stat-label">Actual study time</div>
-                          <div className="stat-value">
-                            {Math.round(totalActual / 60)}
-                            <span>h</span>
+                      )}
+                      {plannerTab === "Calendar" && (
+                        <div className="planner-calendar-panel">
+                          <div className="panel-heading">
+                            <div>
+                              <p className="eyebrow">Sessions and deadlines</p>
+                              <h2>Learning Calendar</h2>
+                            </div>
+                            <CalendarDays size={19} />
                           </div>
+                          {learningSessions.length ? (
+                            learningSessions.slice(0, 20).map((session) => (
+                              <div
+                                className="section-task-row"
+                                key={session.id}
+                              >
+                                <CalendarDays size={16} />
+                                <span className="task-name">
+                                  {session.topic}
+                                </span>
+                                <span>
+                                  {session.date} {session.startTime ?? ""}
+                                </span>
+                                <strong>{session.status}</strong>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="completed-empty">
+                              No learning sessions scheduled.
+                            </p>
+                          )}
                         </div>
-                        <div className="stat-card">
-                          <div className="stat-label">Study sessions</div>
-                          <div className="stat-value">
-                            {studySessions.length}
-                          </div>
-                        </div>
-                        <div className="stat-card">
-                          <div className="stat-label">Learning progress</div>
-                          <div className="stat-value">
-                            {totalPlanned
-                              ? Math.round((totalActual / totalPlanned) * 100)
-                              : 0}
-                            <span>%</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="learning-tree-panel">
-                        <div className="panel-heading">
-                          <div>
-                            <p className="eyebrow">Learning folders</p>
-                            <h2>Subjects, days & topics</h2>
-                          </div>
-                          <ClipboardList size={19} />
-                        </div>
-                        {renderLearningTree(
-                          learningNodes,
-                          activeTimer,
-                          startStudyTimer,
-                          setLearningNodeType,
-                          setLearningNodeParent,
-                          setNodeModalOpen,
-                          pauseStudyTimer,
-                          resumeStudyTimer,
-                          stopStudyTimer,
-                          expandedLearningNodes,
-                          toggleLearningNode,
-                          selectedLearningNodeId,
-                          setSelectedLearningNodeId,
-                        )}
-                        {activeNode && (
-                          <div className="active-timer-bar">
-                            <span>
-                              Study timer: <strong>{activeNode.name}</strong>
-                            </span>
-                            <strong>
-                              {timerLabel(activeTimer?.elapsed ?? 0)}
-                            </strong>
+                      )}
+                      {plannerTab === "Reports" && (
+                        <div className="planner-reports-panel">
+                          <div className="panel-heading">
+                            <div>
+                              <p className="eyebrow">Learning analytics</p>
+                              <h2>Planner Reports</h2>
+                            </div>
                             <button
                               className="secondary-button"
                               type="button"
-                              onClick={() => void stopStudyTimer()}
+                              onClick={exportLearningAnalytics}
                             >
-                              Stop & save session
+                              Export Excel
                             </button>
                           </div>
-                        )}
-                      </div>
+                          <div className="analytics-panels">
+                            <div className="analytics-panel">
+                              <h3>Planned vs actual</h3>
+                              <div className="metric-row">
+                                <span>Planned</span>
+                                <div className="metric-track">
+                                  <span
+                                    style={{
+                                      width: `${totalPlanned ? Math.min(100, (totalActual / totalPlanned) * 100) : 0}%`,
+                                    }}
+                                  />
+                                </div>
+                                <strong>
+                                  {Math.round(totalPlanned / 60)}h
+                                </strong>
+                              </div>
+                              <div className="metric-row">
+                                <span>Actual</span>
+                                <div className="metric-track">
+                                  <span
+                                    style={{
+                                      width: `${totalPlanned ? Math.min(100, (totalActual / totalPlanned) * 100) : 0}%`,
+                                    }}
+                                  />
+                                </div>
+                                <strong>{Math.round(totalActual / 60)}h</strong>
+                              </div>
+                            </div>
+                            <div className="analytics-panel">
+                              <h3>Session history</h3>
+                              <div className="learning-stat">
+                                <strong>{studySessions.length}</strong>
+                                <span>Total sessions</span>
+                              </div>
+                              <div className="learning-stat">
+                                <strong>
+                                  {
+                                    learningNodes.filter(
+                                      (node) => node.status === "Completed",
+                                    ).length
+                                  }
+                                </strong>
+                                <span>Completed items</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {plannerTab === "Roadmaps" && (
+                        <>
+                          <div className="learning-dashboard-header">
+                            <div>
+                              <p className="eyebrow">
+                                Independent learning system
+                              </p>
+                              <h2>Learning Planner & Progress Tracker</h2>
+                              <p className="welcome-copy">
+                                Subject / Day / Topic / Timer / Session history
+                                / Progress
+                              </p>
+                            </div>
+                            <div className="learning-actions">
+                              <button
+                                className="secondary-button"
+                                type="button"
+                                onClick={() => {
+                                  setLearningNodeType("subject");
+                                  setLearningNodeParent(undefined);
+                                  setNodeModalOpen(true);
+                                }}
+                              >
+                                Create Folder
+                              </button>
+                              <button
+                                className="primary-button"
+                                type="button"
+                                onClick={() => setLearningModalOpen(true)}
+                              >
+                                <Plus size={18} />
+                                Plan session
+                              </button>
+                            </div>
+                          </div>
+                          <div className="learning-summary-grid">
+                            <div className="stat-card stat-highlight">
+                              <div className="stat-label">
+                                Planned study time
+                              </div>
+                              <div className="stat-value">
+                                {Math.round(totalPlanned / 60)}
+                                <span>h</span>
+                              </div>
+                            </div>
+                            <div className="stat-card">
+                              <div className="stat-label">
+                                Actual study time
+                              </div>
+                              <div className="stat-value">
+                                {Math.round(totalActual / 60)}
+                                <span>h</span>
+                              </div>
+                            </div>
+                            <div className="stat-card">
+                              <div className="stat-label">Study sessions</div>
+                              <div className="stat-value">
+                                {studySessions.length}
+                              </div>
+                            </div>
+                            <div className="stat-card">
+                              <div className="stat-label">
+                                Learning progress
+                              </div>
+                              <div className="stat-value">
+                                {totalPlanned
+                                  ? Math.round(
+                                      (totalActual / totalPlanned) * 100,
+                                    )
+                                  : 0}
+                                <span>%</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="learning-tree-panel">
+                            <div className="panel-heading">
+                              <div>
+                                <p className="eyebrow">Learning folders</p>
+                                <h2>Subjects, days & topics</h2>
+                              </div>
+                              <ClipboardList size={19} />
+                            </div>
+                            {renderLearningTree(
+                              learningNodes,
+                              activeTimer,
+                              startStudyTimer,
+                              setLearningNodeType,
+                              setLearningNodeParent,
+                              setNodeModalOpen,
+                              pauseStudyTimer,
+                              resumeStudyTimer,
+                              stopStudyTimer,
+                              expandedLearningNodes,
+                              toggleLearningNode,
+                              selectedLearningNodeId,
+                              setSelectedLearningNodeId,
+                            )}
+                          </div>
+                        </>
+                      )}
                       {activeSection === legacyPlannerSection && (
                         <>
                           <div className="planner-heading">
