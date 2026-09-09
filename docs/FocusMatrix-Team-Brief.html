@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FocusMatrix - Team Brief</title>
+<style>
+@page { size: A4; margin: 18mm 17mm; }
+:root { color: #243238; font-family: Arial, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; line-height: 1.45; font-size: 10.5pt; }
+.cover { min-height: 245mm; display: flex; flex-direction: column; justify-content: center; border-bottom: 5px solid #e77761; }
+.kicker { color: #1e6e5a; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; font-size: 9pt; }
+h1 { font-size: 42pt; line-height: 1; margin: 14px 0; letter-spacing: -1.5px; }
+h2 { color: #1e6e5a; font-size: 19pt; margin: 0 0 12px; border-bottom: 1px solid #dce7e2; padding-bottom: 7px; }
+h3 { font-size: 12pt; margin: 18px 0 5px; color: #324944; }
+p { margin: 6px 0 10px; }
+.subtitle { font-size: 16pt; color: #71817c; max-width: 470px; }
+.meta { margin-top: 48px; color: #8b9994; font-size: 9pt; }
+section { page-break-before: always; }
+.lead { font-size: 13pt; color: #5f716b; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.card { border: 1px solid #dce7e2; border-radius: 8px; padding: 13px; background: #fbfdfc; }
+.card strong { color: #1e6e5a; }
+ul { margin: 6px 0 12px; padding-left: 20px; }
+li { margin: 4px 0; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+th { background: #e7f1ed; color: #1e6e5a; text-align: left; }
+th, td { border: 1px solid #dce7e2; padding: 8px; vertical-align: top; }
+code { background: #eef4f1; padding: 2px 4px; font-family: Consolas, monospace; font-size: 9pt; }
+.note { border-left: 4px solid #e77761; padding: 9px 12px; background: #fff7f4; margin: 14px 0; }
+.footer { color: #879590; font-size: 8.5pt; margin-top: 25px; }
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="kicker">Product and Engineering Brief</div>
+  <h1>FocusMatrix</h1>
+  <p class="subtitle">Eisenhower Productivity &amp; Task Management System</p>
+  <p class="lead">A local-first productivity workspace for turning urgency and importance into focused action.</p>
+  <p class="meta">Team briefing · September 2026</p>
+</div>
+
+<section>
+<h2>Executive Summary</h2>
+<p class="lead">FocusMatrix helps users capture tasks, classify them through the Eisenhower Matrix, schedule due dates and reminders, and work from a calm dashboard that runs locally.</p>
+<div class="grid">
+  <div class="card"><strong>Implemented now</strong><ul><li>Responsive dashboard and navigation</li><li>Task creation with urgency and importance</li><li>Automatic quadrant classification</li><li>Complete and reopen workflows</li><li>Due dates and recurring local reminders</li></ul></div>
+  <div class="card"><strong>Runtime options</strong><ul><li>Browser-based Vite application</li><li>Portable Windows Electron executable</li><li>Offline IndexedDB task storage</li><li>Optional Supabase authentication</li><li>DigitalOcean static hosting path</li></ul></div>
+</div>
+<div class="note"><strong>Important boundary:</strong> authentication is optional and currently does not synchronize tasks. Task data remains local to the browser or Electron profile.</div>
+</section>
+
+<section>
+<h2>Product Experience</h2>
+<h3>Eisenhower workflow</h3>
+<table><tr><th>Quadrant</th><th>Rule</th><th>Recommended behavior</th></tr><tr><td>Do first</td><td>Urgent + important</td><td>Act immediately</td></tr><tr><td>Schedule</td><td>Important + not urgent</td><td>Reserve time</td></tr><tr><td>Delegate</td><td>Urgent + not important</td><td>Assign or reduce</td></tr><tr><td>Eliminate</td><td>Not urgent + not important</td><td>Remove from attention</td></tr></table>
+<h3>Current interactions</h3>
+<ul><li>Create tasks from the dashboard or any task-aware view.</li><li>Set the due date, with today's date selected by default.</li><li>Enable one-time, daily, weekly, or monthly reminders.</li><li>Complete tasks from the matrix or task list.</li><li>Reopen completed tasks from Closed tasks.</li><li>Edit the local profile display name from the avatar.</li><li>Move between Dashboard, Matrix, Tasks, Calendar, and Analytics views.</li></ul>
+</section>
+
+<section>
+<h2>Technical Architecture</h2>
+<div class="card"><pre>React + TypeScript + Vite
+        |
+App state and local UI workflows
+        |
+Pure quadrant/date rules + auth boundary
+        |                  |
+Dexie / IndexedDB       Optional Supabase Auth
+        |
+Browser storage or Electron profile</pre></div>
+<h3>Core technologies</h3>
+<table><tr><th>Area</th><th>Technology</th><th>Role</th></tr><tr><td>UI</td><td>React, TypeScript, Lucide</td><td>Product interface and typed components</td></tr><tr><td>Build</td><td>Vite</td><td>Development server and production bundle</td></tr><tr><td>Persistence</td><td>Dexie / IndexedDB</td><td>Local task storage and schema migrations</td></tr><tr><td>Desktop</td><td>Electron</td><td>Portable Windows application</td></tr><tr><td>Auth</td><td>Supabase, optional</td><td>Google and email identity only</td></tr><tr><td>Hosting</td><td>Docker, Nginx, DigitalOcean</td><td>Static web delivery</td></tr></table>
+</section>
+
+<section>
+<h2>Privacy and Data Safety</h2>
+<ul><li>No task data is sent to the hosted server.</li><li>Tasks are stored in the local <code>focus-matrix</code> IndexedDB database.</li><li>Profile names are stored locally in browser storage.</li><li>Authentication uses only browser-safe Supabase configuration.</li><li>Service-role keys and DigitalOcean tokens must remain in secrets.</li><li>Electron disables renderer Node integration and enables context isolation.</li><li>No analytics, advertising, or tracking scripts are configured.</li></ul>
+<div class="note"><strong>Operational limitation:</strong> local reminders run while FocusMatrix is open. Background operating-system notifications, backup/restore, export/import, and cloud task sync are not implemented yet.</div>
+</section>
+
+<section>
+<h2>Delivery and Operations</h2>
+<h3>Local development</h3>
+<pre><code>npm install
+npm run dev
+npm run build
+npm run lint</code></pre>
+<h3>Windows desktop build</h3>
+<pre><code>npm run desktop:portable
+FocusMatrix-standalone/FocusMatrix.exe</code></pre>
+<h3>CI/CD</h3>
+<p>Pull requests run dependency installation, lint, and production build checks. Pushes to <code>main</code> additionally build an immutable Docker image tagged with the commit SHA, push it to DigitalOcean Container Registry, and update App Platform.</p>
+<p>Required GitHub configuration includes <code>DIGITALOCEAN_ACCESS_TOKEN</code>, <code>DOCR_REGISTRY</code>, <code>DO_APP_ID</code>, and optional Supabase secrets.</p>
+<h3>Documentation</h3>
+<ul><li><code>docs/USER_GUIDE.md</code> - user workflows</li><li><code>docs/DEVELOPMENT.md</code> - commands and development behavior</li><li><code>docs/ARCHITECTURE.md</code> - system design</li><li><code>docs/DEPLOYMENT.md</code> - DigitalOcean deployment</li><li><code>docs/SECURITY.md</code> - privacy and security boundaries</li></ul>
+<p class="footer">FocusMatrix · Local-first productivity, designed for focused work.</p>
+</section>
+</body>
+</html>

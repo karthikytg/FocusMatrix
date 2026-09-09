@@ -4,7 +4,9 @@ Eisenhower Productivity & Task Management System, designed to run locally and of
 
 ## Current status
 
-Phase 1 is complete: the React + TypeScript + Vite foundation, dependency baseline, responsive product shell, and architecture contract are in place. Task persistence, routing, and the feature workflows described in the product brief are not implemented yet.
+The current vertical slice includes a responsive dashboard, local task creation/completion/reopen, Eisenhower quadrant classification, due dates, local reminders, recurring reminder scheduling, navigation views, local profile names, optional Supabase authentication, and a portable Electron desktop build.
+
+The larger product brief is not fully implemented. Projects, habits, full calendar interactions, advanced analytics, backup/restore, import/export, cloud task synchronization, and the complete automated test suite remain future work.
 
 ## Development
 
@@ -31,6 +33,14 @@ npm run desktop:portable
 Run `FocusMatrix-standalone/FocusMatrix.exe`. The folder is self-contained and does not require Node.js, Vite, or a browser. User data remains local to the Electron profile.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system design and implementation phases.
+
+## Documentation
+
+- [User guide](docs/USER_GUIDE.md)
+- [Development guide](docs/DEVELOPMENT.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Deployment and DigitalOcean](docs/DEPLOYMENT.md)
+- [Security and privacy](docs/SECURITY.md)
 
 ## Privacy
 
