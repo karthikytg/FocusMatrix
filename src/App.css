@@ -1519,6 +1519,81 @@ button:focus-visible {
   gap: 20px;
   margin-bottom: 22px;
 }
+.planner-summary-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: stretch;
+  gap: 10px;
+  margin: -4px 0 18px;
+  padding: 10px;
+  border: 1px solid #dce8e3;
+  border-radius: 9px;
+  background: #fbfdfcf2;
+  box-shadow: 0 6px 18px #24323812;
+  backdrop-filter: blur(8px);
+}
+.timer-summary,
+.deadline-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 0;
+  border-radius: 7px;
+  padding: 9px 11px;
+  background: #eef5f1;
+  color: var(--green);
+  text-align: left;
+  cursor: pointer;
+}
+.timer-summary span,
+.deadline-summary span {
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-size: 9px;
+  font-weight: 700;
+}
+.timer-summary strong,
+.deadline-summary strong {
+  font-size: 14px;
+}
+.timer-summary small,
+.deadline-summary small {
+  margin-left: auto;
+  color: #70817a;
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.planner-summary-bar.at-risk .deadline-summary {
+  background: #fff4dc;
+  color: #a87316;
+}
+.planner-summary-bar.overdue .deadline-summary {
+  background: #fff0ee;
+  color: #c4574d;
+}
+.timer-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.timer-summary-actions .icon-button,
+.timer-control {
+  min-width: 32px;
+  min-height: 30px;
+  padding: 6px 8px;
+  justify-content: center;
+}
+.timer-control.stop,
+.timer-summary-actions .stop {
+  color: #bd5147;
+  background: #fff0ee;
+}
 .learning-dashboard-header h2 {
   margin: 0;
   font-size: 24px;
@@ -1598,6 +1673,18 @@ button:focus-visible {
   margin-left: auto;
   font-size: 18px;
   letter-spacing: 1px;
+}
+@media (max-width: 700px) {
+  .planner-summary-bar {
+    grid-template-columns: 1fr;
+  }
+  .timer-summary,
+  .deadline-summary {
+    min-height: 48px;
+  }
+  .timer-summary-actions {
+    justify-content: flex-end;
+  }
 }
 .analytics-export-actions {
   display: flex;

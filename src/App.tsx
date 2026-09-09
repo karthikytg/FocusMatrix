@@ -12,6 +12,8 @@
   Grid2X2,
   ListTodo,
   Plus,
+  Pause,
+  Play,
   RotateCcw,
   Settings,
   Sparkles,
@@ -103,7 +105,12 @@ function taskStatus(task: Task): TaskStatus {
   return task.status ?? (task.completed ? "Completed" : "Pending");
 }
 
-type StudyTimerState = { nodeId: string; startedAt: string; elapsed: number };
+type StudyTimerState = {
+  nodeId: string;
+  startedAt: string;
+  elapsed: number;
+  paused: boolean;
+};
 
 function renderLearningTree(
   learningNodes: LearningNode[],
@@ -116,7 +123,9 @@ function renderLearningTree(
     React.SetStateAction<string | undefined>
   >,
   setNodeModalOpen: React.Dispatch<React.SetStateAction<boolean>>,
-  timerLabel: (seconds: number) => string,
+  pauseStudyTimer: () => void,
+  resumeStudyTimer: () => void,
+  stopStudyTimer: () => Promise<void>,
   expandedNodes: Record<string, boolean>,
   toggleNode: (nodeId: string) => void,
   selectedNodeId: string | undefined,
@@ -192,15 +201,45 @@ function renderLearningTree(
                     <span>
                       {day.actualMinutes}/{day.plannedMinutes} min
                     </span>
-                    <button
-                      className="icon-button"
-                      type="button"
-                      onClick={() => void startStudyTimer(day)}
-                    >
-                      {activeTimer?.nodeId === day.id
-                        ? timerLabel(activeTimer.elapsed)
-                        : "Start"}
-                    </button>
+                    {activeTimer?.nodeId === day.id ? (
+                      <>
+                        <button
+                          className="icon-button timer-control"
+                          type="button"
+                          aria-label={
+                            activeTimer.paused ? "Resume timer" : "Pause timer"
+                          }
+                          onClick={
+                            activeTimer.paused
+                              ? resumeStudyTimer
+                              : pauseStudyTimer
+                          }
+                        >
+                          {activeTimer.paused ? (
+                            <Play size={13} />
+                          ) : (
+                            <Pause size={13} />
+                          )}
+                        </button>
+                        <button
+                          className="icon-button timer-control stop"
+                          type="button"
+                          aria-label="Stop timer"
+                          onClick={() => void stopStudyTimer()}
+                        >
+                          Stop
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className="icon-button timer-control"
+                        type="button"
+                        aria-label={`Start timer for ${day.name}`}
+                        onClick={() => void startStudyTimer(day)}
+                      >
+                        <Play size={13} />
+                      </button>
+                    )}
                     <button
                       className="secondary-button"
                       type="button"
@@ -225,18 +264,50 @@ function renderLearningTree(
                       >
                         <span>{topic.name}</span>
                         <small>
-                          {topic.actualMinutes}/{topic.plannedMinutes} min Â·{" "}
+                          {topic.actualMinutes}/{topic.plannedMinutes} min -{" "}
                           {topic.status}
                         </small>
-                        <button
-                          className="icon-button"
-                          type="button"
-                          onClick={() => void startStudyTimer(topic)}
-                        >
-                          {activeTimer?.nodeId === topic.id
-                            ? timerLabel(activeTimer.elapsed)
-                            : "Start"}
-                        </button>
+                        {activeTimer?.nodeId === topic.id ? (
+                          <>
+                            <button
+                              className="icon-button timer-control"
+                              type="button"
+                              aria-label={
+                                activeTimer.paused
+                                  ? "Resume timer"
+                                  : "Pause timer"
+                              }
+                              onClick={
+                                activeTimer.paused
+                                  ? resumeStudyTimer
+                                  : pauseStudyTimer
+                              }
+                            >
+                              {activeTimer.paused ? (
+                                <Play size={13} />
+                              ) : (
+                                <Pause size={13} />
+                              )}
+                            </button>
+                            <button
+                              className="icon-button timer-control stop"
+                              type="button"
+                              aria-label="Stop timer"
+                              onClick={() => void stopStudyTimer()}
+                            >
+                              Stop
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            className="icon-button timer-control"
+                            type="button"
+                            aria-label={`Start timer for ${topic.name}`}
+                            onClick={() => void startStudyTimer(topic)}
+                          >
+                            <Play size={13} />
+                          </button>
+                        )}
                       </div>
                     ))}
                 </div>
@@ -293,14 +364,19 @@ function App() {
     nodeId: string;
     startedAt: string;
     elapsed: number;
+    paused: boolean;
   } | null>(() => {
     const raw = localStorage.getItem("focusmatrix-study-timer");
     return raw
-      ? (JSON.parse(raw) as {
-          nodeId: string;
-          startedAt: string;
-          elapsed: number;
-        })
+      ? (() => {
+          const parsed = JSON.parse(raw) as {
+            nodeId: string;
+            startedAt: string;
+            elapsed: number;
+            paused?: boolean;
+          };
+          return { ...parsed, paused: parsed.paused ?? false };
+        })()
       : null;
   });
   const [learningNodeParent, setLearningNodeParent] = useState<
@@ -619,7 +695,7 @@ function App() {
     return (
       <div className="pagination">
         <span>
-          {totalItems} records Â· Page {currentPage} of {totalPages}
+          {totalItems} records - Page {currentPage} of {totalPages}
         </span>
         <label>
           Rows
@@ -897,7 +973,27 @@ function App() {
         nodeId: node.id,
         startedAt: new Date().toISOString(),
         elapsed: 0,
+        paused: false,
       });
+  }
+
+  function pauseStudyTimer() {
+    if (!activeTimer || activeTimer.paused) return;
+    const elapsed = Math.floor(
+      (Date.now() - new Date(activeTimer.startedAt).getTime()) / 1000,
+    );
+    setActiveTimer({ ...activeTimer, elapsed, paused: true });
+  }
+
+  function resumeStudyTimer() {
+    if (!activeTimer || !activeTimer.paused) return;
+    setActiveTimer({
+      ...activeTimer,
+      startedAt: new Date(
+        Date.now() - activeTimer.elapsed * 1000,
+      ).toISOString(),
+      paused: false,
+    });
   }
 
   async function stopStudyTimer() {
@@ -1159,7 +1255,7 @@ function App() {
                 <td>
                   {task.completedAt
                     ? new Date(task.completedAt).toLocaleDateString()
-                    : "â€”"}
+                    : "-"}
                 </td>
                 <td>
                   <select
@@ -1568,7 +1664,7 @@ function App() {
                     <Target size={19} />
                   </div>
                   <div className="focus-quote">
-                    <span className="quote-mark">â€œ</span>
+                    <span className="quote-mark">&quot;</span>
                     <p>What would make today feel meaningful?</p>
                     <span className="quote-line" />
                   </div>
@@ -1659,6 +1755,36 @@ function App() {
                         (node) => node.id === activeTimer.nodeId,
                       )
                     : undefined;
+                  const currentPlannerNode =
+                    learningNodes.find(
+                      (node) => node.id === selectedLearningNodeId,
+                    ) ?? activeNode;
+                  const roadmapSubject =
+                    currentPlannerNode?.type === "subject"
+                      ? currentPlannerNode
+                      : learningNodes.find(
+                          (node) =>
+                            node.type === "subject" &&
+                            (node.id === currentPlannerNode?.parentId ||
+                              learningNodes.find(
+                                (parent) =>
+                                  parent.id === currentPlannerNode?.parentId,
+                              )?.parentId === node.id),
+                        );
+                  const deadlineDate = roadmapSubject?.targetDate
+                    ? new Date(`${roadmapSubject.targetDate}T00:00:00`)
+                    : undefined;
+                  const daysRemaining = deadlineDate
+                    ? Math.ceil(
+                        (deadlineDate.getTime() - Date.now()) / 86400000,
+                      )
+                    : undefined;
+                  const roadmapHealth =
+                    daysRemaining !== undefined && daysRemaining < 0
+                      ? "Overdue"
+                      : roadmapSubject?.roadmapStatus === "On Hold"
+                        ? "At Risk"
+                        : "On Track";
                   const totalPlanned = learningNodes.reduce(
                     (sum, node) => sum + node.plannedMinutes,
                     0,
@@ -1703,13 +1829,91 @@ function App() {
                   );
                   return (
                     <div className="planner-view">
+                      <div
+                        className={`planner-summary-bar ${roadmapHealth.toLowerCase().replace(" ", "-")}`}
+                      >
+                        <button
+                          className="timer-summary"
+                          type="button"
+                          onClick={() =>
+                            activeNode &&
+                            setSelectedLearningNodeId(activeNode.id)
+                          }
+                        >
+                          <span>Timer</span>
+                          <strong>
+                            {activeTimer
+                              ? timerLabel(activeTimer.elapsed)
+                              : "00:00:00"}
+                          </strong>
+                          <small>
+                            {activeNode?.name ?? "No active study session"}
+                          </small>
+                        </button>
+                        <button
+                          className="deadline-summary"
+                          type="button"
+                          onClick={() =>
+                            roadmapSubject &&
+                            setSelectedLearningNodeId(roadmapSubject.id)
+                          }
+                        >
+                          <span>Deadline</span>
+                          <strong>
+                            {deadlineDate
+                              ? deadlineDate.toLocaleDateString(undefined, {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : "No deadline"}
+                          </strong>
+                          <small>
+                            {daysRemaining === undefined
+                              ? "Set a roadmap target"
+                              : `${Math.max(0, daysRemaining)} days remaining · ${roadmapHealth}`}
+                          </small>
+                        </button>
+                        <div className="timer-summary-actions">
+                          {activeTimer && !activeTimer.paused && (
+                            <button
+                              className="icon-button"
+                              type="button"
+                              aria-label="Pause timer"
+                              onClick={pauseStudyTimer}
+                            >
+                              Pause
+                            </button>
+                          )}
+                          {activeTimer?.paused && (
+                            <button
+                              className="icon-button"
+                              type="button"
+                              aria-label="Resume timer"
+                              onClick={resumeStudyTimer}
+                            >
+                              Resume
+                            </button>
+                          )}
+                          {activeTimer && (
+                            <button
+                              className="icon-button stop"
+                              type="button"
+                              aria-label="Stop timer"
+                              onClick={() => void stopStudyTimer()}
+                            >
+                              Stop
+                            </button>
+                          )}
+                        </div>
+                      </div>
                       <div className="learning-dashboard-header">
                         <div>
                           <p className="eyebrow">Independent learning system</p>
                           <h2>Learning Planner & Progress Tracker</h2>
                           <p className="welcome-copy">
-                            Subject â†’ Day â†’ Topic â†’ Timer â†’ Session
-                            history â†’ Progress
+                            Subject / Day / Topic / Timer / Session history /
+                            Progress
                           </p>
                         </div>
                         <div className="learning-actions">
@@ -1780,7 +1984,9 @@ function App() {
                           setLearningNodeType,
                           setLearningNodeParent,
                           setNodeModalOpen,
-                          timerLabel,
+                          pauseStudyTimer,
+                          resumeStudyTimer,
+                          stopStudyTimer,
                           expandedLearningNodes,
                           toggleLearningNode,
                           selectedLearningNodeId,
@@ -1884,7 +2090,7 @@ function App() {
                                       <small>{session.goal}</small>
                                     </div>
                                     <span>
-                                      {session.startTime ?? ""} Â·{" "}
+                                      {session.startTime ?? ""} -{" "}
                                       {session.plannedMinutes} min
                                     </span>
                                     <select
@@ -3066,7 +3272,7 @@ function App() {
                   <strong>{followUp.date}</strong>
                   <span>
                     {followUp.remarks}
-                    {followUp.nextAction && ` Â· Next: ${followUp.nextAction}`}
+                    {followUp.nextAction && ` - Next: ${followUp.nextAction}`}
                   </span>
                   <button
                     className="history-action"
@@ -3132,9 +3338,9 @@ function App() {
                     {audit.auditDate}
                   </strong>
                   <span>
-                    {audit.remarks || "Review planned"} Â·{" "}
+                    {audit.remarks || "Review planned"} -{" "}
                     {audit.responsiblePerson}
-                    {audit.nextAuditDate && ` Â· Next: ${audit.nextAuditDate}`}
+                    {audit.nextAuditDate && ` - Next: ${audit.nextAuditDate}`}
                   </span>
                   <select
                     className="history-status"
