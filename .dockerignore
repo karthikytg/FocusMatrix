@@ -1,0 +1,13 @@
+node_modules
+.git
+.github
+.vscode
+dist
+release
+FocusMatrix-standalone
+portable-build
+coverage
+*.log
+.env
+.env.*
+!.env.example

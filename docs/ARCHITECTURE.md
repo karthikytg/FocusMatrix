@@ -16,7 +16,7 @@ React pages and feature components
    Backup/export + service worker cache
 ```
 
-The browser is the only runtime. No account, server, analytics, or external database is required.
+The browser is the primary runtime. Electron provides an optional Windows desktop shell. Supabase is an optional authentication service; it is not currently used for task synchronization.
 
 ## B. Technology stack
 
@@ -86,13 +86,13 @@ Zustand owns ephemeral state: theme, sidebar, active filters, selected tasks, di
 
 Data stays in IndexedDB. Imported JSON/CSV is size-limited, parsed structurally, validated with Zod, and previewed before writes. User text is rendered as text, not HTML. No `eval`, secrets, tracking scripts, or third-party telemetry are used.
 
-## H. Offline and PWA
+## H. Offline and desktop behavior
 
-The production build will register a service worker that precaches the application shell and serves local assets offline. IndexedDB is the source of truth. The manifest will provide install metadata and local icons. Browser notification permission remains optional.
+IndexedDB is the source of truth for tasks and reminders. The Electron build loads the Vite output from local files with relative asset paths. Browser notifications are optional and reminder checks run while the application is open. A service worker, manifest, and full PWA install flow are not implemented yet.
 
 ## I. Testing strategy
 
-Pure calculations receive unit tests first. Repository tests use an isolated Dexie database and cover migrations, imports, backups, and large task sets. Feature tests cover create/edit/complete/move/delete flows. Playwright covers the primary matrix, calendar, and recovery workflows at desktop and mobile sizes.
+The current CI checks linting and production compilation. Pure calculations, repositories, feature flows, and Playwright coverage are planned but the repository does not yet contain the complete automated test suite described by the product brief.
 
 ## J. Development phases
 
