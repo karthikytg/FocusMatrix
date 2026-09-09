@@ -1,3 +1,4 @@
+.learning-status-panel { margin-top: 13px; padding: 22px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }.tracker-toolbar { display: flex; justify-content: flex-end; gap: 8px; margin: 14px 0; }.tracker-toolbar input, .tracker-toolbar select { border: 1px solid #d8e2de; border-radius: 6px; padding: 8px; background: white; color: var(--ink); font: inherit; font-size: 10px; }.learning-status-table-wrap { overflow-x: auto; }.learning-status-table { width: 100%; min-width: 1050px; border-collapse: collapse; font-size: 10px; }.learning-status-table th { padding: 10px 8px; background: #f1f6f3; color: #6d7f78; text-align: left; text-transform: uppercase; letter-spacing: .6px; }.learning-status-table td { padding: 10px 8px; border-top: 1px solid #edf1ef; color: #65736e; white-space: nowrap; }.active-learning-row { background: #fff8e9; }.learning-status-chip { display: inline-block; padding: 4px 6px; border-radius: 5px; background: #eef2f0; color: #71817a; }.learning-status-chip.in-progress { background: #edf4fa; color: #557f98; }.learning-status-chip.completed { background: #e7f1ed; color: var(--green); }.learning-status-chip.overdue { background: #fff0ee; color: #bd5147; }.table-link { border: 0; background: transparent; color: var(--green); cursor: pointer; font: inherit; font-size: 10px; }.progress-cell { display: flex; align-items: center; gap: 6px; min-width: 100px; }.progress-cell .metric-track { flex: 1; }.table-timer-controls { display: flex; align-items: center; gap: 5px; }.table-timer-controls strong { color: var(--green); font-size: 10px; }
 :root {
   --ink: #243238;
   --muted: #7b8787;
@@ -1591,6 +1592,7 @@ button:focus-visible {
 .planner-reports-panel .analytics-panels {
   margin-bottom: 0;
 }
+.calendar-grid { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 9px; overflow-x: auto; }.calendar-day-column { min-height: 280px; padding: 10px; border: 1px solid #dce8e3; border-radius: 8px; background: #fbfdfc; }.calendar-day-column h3 { margin: 0 0 10px; color: #65746e; font-size: 11px; }.calendar-card { display: grid; gap: 4px; margin-top: 7px; padding: 9px; border-left: 3px solid var(--blue); border-radius: 5px; background: #eef4fa; font-size: 10px; }.calendar-card.planner-event { border-left-color: var(--green); background: #e7f1ed; }.calendar-card strong { color: var(--ink); }.calendar-card small { color: #73827b; }.calendar-card span { color: #65746e; font-weight: 700; }
 .timer-summary,
 .deadline-summary {
   display: flex;

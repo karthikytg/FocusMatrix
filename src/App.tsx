@@ -427,6 +427,9 @@ function App() {
     useState<string>();
   const [nodeMenuId, setNodeMenuId] = useState<string>();
   const [deleteNodeTarget, setDeleteNodeTarget] = useState<LearningNode | null>(null);
+  const [learningTableSearch, setLearningTableSearch] = useState("");
+  const [learningTableStatus, setLearningTableStatus] = useState("ALL");
+  const [learningHistoryNode, setLearningHistoryNode] = useState<LearningNode | null>(null);
   const [isLearningModalOpen, setLearningModalOpen] = useState(false);
   const [selectedLearningSession, setSelectedLearningSession] =
     useState<LearningSession | null>(null);
@@ -1340,6 +1343,17 @@ function App() {
     );
   }
 
+  function renderLearningStatusTracker() {
+    const topicRows = learningNodes.filter((node) => node.type === "topic").filter((topic) => {
+      const matchesSearch = !learningTableSearch || topic.name.toLowerCase().includes(learningTableSearch.toLowerCase()) || (topic.goal ?? "").toLowerCase().includes(learningTableSearch.toLowerCase());
+      const matchesStatus = learningTableStatus === "ALL" || topic.status === learningTableStatus;
+      return matchesSearch && matchesStatus;
+    });
+    const page = getPage("learning-status", topicRows);
+    const context = (topic: LearningNode) => { const day = learningNodes.find((node) => node.id === topic.parentId); const subject = day ? learningNodes.find((node) => node.id === day.parentId) : undefined; return { day, subject }; };
+    return <div className="learning-status-tracker"><div className="tracker-toolbar"><input value={learningTableSearch} onChange={(event) => { setLearningTableSearch(event.target.value); setPageByList({}); }} placeholder="Search topics" aria-label="Search learning topics" /><select value={learningTableStatus} onChange={(event) => { setLearningTableStatus(event.target.value); setPageByList({}); }} aria-label="Filter learning status"><option value="ALL">All statuses</option><option>Planned</option><option>In Progress</option><option>Completed</option><option>Postponed</option><option>Missed</option></select><button className="secondary-button" type="button" onClick={() => { setLearningTableSearch(""); setLearningTableStatus("ALL"); setPageByList({}); }}>Clear Filters</button></div><div className="learning-status-table-wrap"><table className="learning-status-table"><thead><tr><th>Roadmap / Subject</th><th>Day</th><th>Topic</th><th>Status</th><th>Timer</th><th>Planned / Actual</th><th>Sessions</th><th>Progress</th><th>Deadline</th><th>Last Studied</th><th>Actions</th></tr></thead><tbody>{page.pageItems.map((topic) => { const { day, subject } = context(topic); const sessions = studySessions.filter((session) => session.topicId === topic.id); const lastStudied = sessions[0]?.endAt ?? sessions[0]?.startAt; const progress = topic.plannedMinutes ? Math.min(100, Math.round((topic.actualMinutes / topic.plannedMinutes) * 100)) : 0; const overdue = topic.targetDate && topic.targetDate < localDateInputValue() && topic.status !== "Completed"; return <tr className={activeTimer?.nodeId === topic.id ? "active-learning-row" : ""} key={topic.id}><td>{subject?.name ?? "-"}</td><td>{day?.name ?? "-"}</td><td className="topic-cell">{topic.name}</td><td><span className={`learning-status-chip ${overdue ? "overdue" : topic.status.toLowerCase().replace(" ", "-")}`}>{overdue ? "Overdue" : topic.status}</span></td><td>{activeTimer?.nodeId === topic.id ? <div className="table-timer-controls"><strong>{timerLabel(activeTimer.elapsed)}</strong><button className="icon-button timer-control" type="button" aria-label={activeTimer.paused ? "Resume timer" : "Pause timer"} onClick={activeTimer.paused ? resumeStudyTimer : pauseStudyTimer}>{activeTimer.paused ? <Play size={13} /> : <Pause size={13} />}</button><button className="icon-button timer-control stop" type="button" aria-label="Stop timer" onClick={() => void stopStudyTimer()}><Square size={12} /></button></div> : <button className="icon-button timer-control" type="button" aria-label={`Start ${topic.name} timer`} onClick={() => void startStudyTimer(topic)}><Play size={13} /></button>}</td><td>{topic.actualMinutes}/{topic.plannedMinutes} min</td><td><button className="table-link" type="button" onClick={() => setLearningHistoryNode(topic)}>{sessions.length} - View</button></td><td><div className="progress-cell"><div className="metric-track"><span style={{ width: `${progress}%` }} /></div><strong>{progress}%</strong></div></td><td>{topic.targetDate ?? day?.targetDate ?? "-"}</td><td>{lastStudied ? new Date(lastStudied).toLocaleDateString() : "-"}</td><td><button className="node-menu-button" type="button" aria-label={`Actions for ${topic.name}`}>...</button></td></tr>; })}</tbody></table></div>{!topicRows.length && <p className="completed-empty">No learning topics match your filters.</p>}{renderPagination("learning-status", topicRows.length)}</div>;
+  }
+
   function saveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = profileName.trim();
@@ -2031,21 +2045,7 @@ function App() {
                               </div>
                             </div>
                           </div>
-                          <div className="analytics-panel">
-                            <h3>Continue learning</h3>
-                            <p className="welcome-copy">
-                              {activeNode
-                                ? `Continue ${activeNode.name} - ${timerLabel(activeTimer?.elapsed ?? 0)} elapsed.`
-                                : "Select a roadmap, day, or topic from Roadmaps to continue."}
-                            </p>
-                            <button
-                              className="primary-button"
-                              type="button"
-                              onClick={() => selectPlannerTab("Roadmaps")}
-                            >
-                              Open Roadmaps
-                            </button>
-                          </div>
+                          <div className="learning-status-panel"><div className="panel-heading"><div><p className="eyebrow">Overall status tracker</p><h2>Learning Status Tracker</h2></div><button className="text-button" type="button" onClick={() => selectPlannerTab("Roadmaps")}>Open Roadmaps <ChevronRight size={15} /></button></div>{renderLearningStatusTracker()}</div>
                         </div>
                       )}
                       {plannerTab === legacyPlannerSection && (
@@ -2509,9 +2509,7 @@ function App() {
                 <div className="calendar-view">
                   <div className="calendar-toolbar"><div><p className="eyebrow">Unified calendar</p><h2>Work Week</h2></div><label>Source<select value={calendarSource} onChange={(event) => setCalendarSource(event.target.value as "ALL" | "FOCUS" | "PLANNER")}><option value="ALL">All</option><option value="FOCUS">Focus Matrix</option><option value="PLANNER">Planner</option></select></label></div>
                   <div className="calendar-week-label">Monday - Tuesday - Wednesday - Thursday - Friday</div>
-                  {calendarSource !== "PLANNER" && calendarTasks.length > 0 && <><h3 className="calendar-source-heading">Focus Matrix</h3>{getPage("calendar-focus", calendarTasks).pageItems.map((task) => <div className="section-task-row calendar-event focus-event" key={`focus-${task.id}`}><CalendarDays size={16} /><span className="task-name">{task.title}</span><span>{task.dueDate}</span><strong>{taskStatus(task)}</strong></div>)}{renderPagination("calendar-focus", calendarTasks.length)}</>}
-                  {calendarSource !== "FOCUS" && learningSessions.length > 0 && <><h3 className="calendar-source-heading">Planner</h3>{getPage("calendar-planner", learningSessions).pageItems.map((session) => <div className="section-task-row calendar-event planner-event" key={`planner-${session.id}`}><CalendarDays size={16} /><span className="task-name">{session.topic}</span><span>{session.date} {session.startTime ?? ""}</span><strong>{session.status}</strong></div>)}{renderPagination("calendar-planner", learningSessions.length)}</>}
-                  {calendarTasks.length === 0 && learningSessions.length === 0 && <p className="completed-empty">No calendar items have been scheduled.</p>}
+                  <div className="calendar-grid">{["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((dayName, dayIndex) => <div className="calendar-day-column" key={dayName}><h3>{dayName}</h3>{calendarSource !== "PLANNER" && calendarTasks.filter((task) => new Date(`${task.dueDate}T00:00:00`).getDay() === (dayIndex + 1) % 7).map((task) => <div className="calendar-card focus-event" key={`focus-${task.id}`}><strong>{task.title}</strong><small>Focus Matrix - {task.dueDate}</small><span>{taskStatus(task)}</span></div>)}{calendarSource !== "FOCUS" && learningSessions.filter((session) => new Date(`${session.date}T00:00:00`).getDay() === (dayIndex + 1) % 7).map((session) => <div className="calendar-card planner-event" key={`planner-${session.id}`}><strong>{session.topic}</strong><small>Planner - {session.startTime ?? ""}</small><span>{session.status}</span></div>)}</div>)}</div>
                 </div>
               )}
               {activeSection === "Analytics" && (
@@ -3111,6 +3109,7 @@ function App() {
           </div>
         </div>
       )}
+      {learningHistoryNode && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setLearningHistoryNode(null)}><div className="task-modal detail-modal" role="dialog" aria-modal="true" aria-labelledby="learning-history-title"><div className="modal-heading"><div><p className="eyebrow">Study sessions</p><h2 id="learning-history-title">{learningHistoryNode.name}</h2></div><button className="modal-close" type="button" aria-label="Close" onClick={() => setLearningHistoryNode(null)}>X</button></div>{studySessions.filter((session) => session.topicId === learningHistoryNode.id).map((session) => <div className="history-row" key={session.id}><strong>{new Date(session.startAt).toLocaleDateString()}</strong><span>{new Date(session.startAt).toLocaleTimeString()} - {session.endAt ? new Date(session.endAt).toLocaleTimeString() : "Running"} · {session.actualMinutes}/{session.plannedMinutes} min</span><small>{session.status}</small></div>)}{!studySessions.some((session) => session.topicId === learningHistoryNode.id) && <p className="completed-empty">No study sessions recorded yet.</p>}</div></div>}
       {selectedLearningSession && (
         <div className="modal-backdrop" role="presentation">
           <div
