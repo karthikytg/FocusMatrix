@@ -117,6 +117,10 @@ function renderLearningTree(
   >,
   setNodeModalOpen: React.Dispatch<React.SetStateAction<boolean>>,
   timerLabel: (seconds: number) => string,
+  expandedNodes: Record<string, boolean>,
+  toggleNode: (nodeId: string) => void,
+  selectedNodeId: string | undefined,
+  setSelectedNodeId: (nodeId: string) => void,
 ) {
   const subjects = learningNodes.filter((node) => node.type === "subject");
   return subjects.length ? (
@@ -125,8 +129,23 @@ function renderLearningTree(
         (node) => node.parentId === subject.id && node.type === "day",
       );
       return (
-        <div className="learning-subject" key={subject.id}>
+        <div
+          className={`learning-subject ${selectedNodeId === subject.id ? "selected" : ""}`}
+          key={subject.id}
+          onClick={() => setSelectedNodeId(subject.id)}
+        >
           <div className="learning-node-heading">
+            <button
+              className="tree-toggle"
+              type="button"
+              aria-label={`${expandedNodes[subject.id] ? "Collapse" : "Expand"} ${subject.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleNode(subject.id);
+              }}
+            >
+              {expandedNodes[subject.id] ? "v" : ">"}
+            </button>
             <strong>{subject.name}</strong>
             <span>
               {subject.actualMinutes}/{subject.plannedMinutes} min
@@ -143,59 +162,86 @@ function renderLearningTree(
               Create Subfolder
             </button>
           </div>
-          {days.map((day) => {
-            const topics = learningNodes.filter(
-              (node) => node.parentId === day.id && node.type === "topic",
-            );
-            return (
-              <div className="learning-day" key={day.id}>
-                <div className="learning-node-heading">
-                  <strong>{day.name}</strong>
-                  <span>
-                    {day.actualMinutes}/{day.plannedMinutes} min
-                  </span>
-                  <button
-                    className="icon-button"
-                    type="button"
-                    onClick={() => void startStudyTimer(day)}
-                  >
-                    {activeTimer?.nodeId === day.id
-                      ? timerLabel(activeTimer.elapsed)
-                      : "â–¶"}
-                  </button>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={() => {
-                      setLearningNodeType("topic");
-                      setLearningNodeParent(day.id);
-                      setNodeModalOpen(true);
-                    }}
-                  >
-                    Add Topic
-                  </button>
-                </div>
-                {topics.map((topic) => (
-                  <div className="learning-topic" key={topic.id}>
-                    <span>{topic.name}</span>
-                    <small>
-                      {topic.actualMinutes}/{topic.plannedMinutes} min Â·{" "}
-                      {topic.status}
-                    </small>
+          {expandedNodes[subject.id] &&
+            days.map((day) => {
+              const topics = learningNodes.filter(
+                (node) => node.parentId === day.id && node.type === "topic",
+              );
+              return (
+                <div
+                  className={`learning-day ${selectedNodeId === day.id ? "selected" : ""}`}
+                  key={day.id}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSelectedNodeId(day.id);
+                  }}
+                >
+                  <div className="learning-node-heading">
+                    <button
+                      className="tree-toggle"
+                      type="button"
+                      aria-label={`${expandedNodes[day.id] ? "Collapse" : "Expand"} ${day.name}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleNode(day.id);
+                      }}
+                    >
+                      {expandedNodes[day.id] ? "v" : ">"}
+                    </button>
+                    <strong>{day.name}</strong>
+                    <span>
+                      {day.actualMinutes}/{day.plannedMinutes} min
+                    </span>
                     <button
                       className="icon-button"
                       type="button"
-                      onClick={() => void startStudyTimer(topic)}
+                      onClick={() => void startStudyTimer(day)}
                     >
-                      {activeTimer?.nodeId === topic.id
+                      {activeTimer?.nodeId === day.id
                         ? timerLabel(activeTimer.elapsed)
-                        : "â–¶ Start"}
+                        : "Start"}
+                    </button>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => {
+                        setLearningNodeType("topic");
+                        setLearningNodeParent(day.id);
+                        setNodeModalOpen(true);
+                      }}
+                    >
+                      Add Topic
                     </button>
                   </div>
-                ))}
-              </div>
-            );
-          })}
+                  {expandedNodes[day.id] &&
+                    topics.map((topic) => (
+                      <div
+                        className={`learning-topic ${selectedNodeId === topic.id ? "selected" : ""}`}
+                        key={topic.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedNodeId(topic.id);
+                        }}
+                      >
+                        <span>{topic.name}</span>
+                        <small>
+                          {topic.actualMinutes}/{topic.plannedMinutes} min Â·{" "}
+                          {topic.status}
+                        </small>
+                        <button
+                          className="icon-button"
+                          type="button"
+                          onClick={() => void startStudyTimer(topic)}
+                        >
+                          {activeTimer?.nodeId === topic.id
+                            ? timerLabel(activeTimer.elapsed)
+                            : "Start"}
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              );
+            })}
         </div>
       );
     })
@@ -266,7 +312,31 @@ function App() {
   const [learningNodeName, setLearningNodeName] = useState("");
   const [learningNodeGoal, setLearningNodeGoal] = useState("");
   const [learningNodePlanned, setLearningNodePlanned] = useState(60);
+  const [roadmapDescription, setRoadmapDescription] = useState("");
+  const [roadmapStartDate, setRoadmapStartDate] = useState(
+    localDateInputValue(),
+  );
+  const [roadmapTargetDate, setRoadmapTargetDate] = useState("");
+  const [roadmapDailyMinutes, setRoadmapDailyMinutes] = useState(60);
+  const [roadmapWeeklyMinutes, setRoadmapWeeklyMinutes] = useState(300);
+  const [roadmapPriority, setRoadmapPriority] = useState<
+    "Low" | "Medium" | "High"
+  >("Medium");
+  const [roadmapStatus, setRoadmapStatus] =
+    useState<LearningNode["roadmapStatus"]>("Not Started");
+  const [roadmapProgress, setRoadmapProgress] = useState(0);
+  const [roadmapMilestones, setRoadmapMilestones] = useState("");
   const [isNodeModalOpen, setNodeModalOpen] = useState(false);
+  const [expandedLearningNodes, setExpandedLearningNodes] = useState<
+    Record<string, boolean>
+  >(
+    () =>
+      JSON.parse(
+        localStorage.getItem("focusmatrix-learning-expanded") ?? "{}",
+      ) as Record<string, boolean>,
+  );
+  const [selectedLearningNodeId, setSelectedLearningNodeId] =
+    useState<string>();
   const [isLearningModalOpen, setLearningModalOpen] = useState(false);
   const [selectedLearningSession, setSelectedLearningSession] =
     useState<LearningSession | null>(null);
@@ -322,6 +392,17 @@ function App() {
       .toArray()
       .then(setStudySessions);
   }, []);
+
+  function toggleLearningNode(nodeId: string) {
+    setExpandedLearningNodes((current) => {
+      const next = { ...current, [nodeId]: !current[nodeId] };
+      localStorage.setItem(
+        "focusmatrix-learning-expanded",
+        JSON.stringify(next),
+      );
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (activeTimer)
@@ -766,12 +847,40 @@ function App() {
       plannedMinutes: learningNodePlanned,
       actualMinutes: 0,
       status: "Planned",
+      description:
+        learningNodeType === "subject"
+          ? roadmapDescription.trim() || undefined
+          : undefined,
+      startDate: learningNodeType === "subject" ? roadmapStartDate : undefined,
+      targetDate:
+        learningNodeType === "subject"
+          ? roadmapTargetDate || undefined
+          : undefined,
+      dailyTargetMinutes:
+        learningNodeType === "subject" ? roadmapDailyMinutes : undefined,
+      weeklyTargetMinutes:
+        learningNodeType === "subject" ? roadmapWeeklyMinutes : undefined,
+      priority: learningNodeType === "subject" ? roadmapPriority : undefined,
+      roadmapStatus: learningNodeType === "subject" ? roadmapStatus : undefined,
+      progressPercent:
+        learningNodeType === "subject" ? roadmapProgress : undefined,
+      milestones:
+        learningNodeType === "subject"
+          ? roadmapMilestones
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean)
+          : undefined,
       createdAt: new Date().toISOString(),
     };
     await db.learningNodes.add(node);
     setLearningNodes((current) => [...current, node]);
     setLearningNodeName("");
     setLearningNodeGoal("");
+    setRoadmapDescription("");
+    setRoadmapTargetDate("");
+    setRoadmapProgress(0);
+    setRoadmapMilestones("");
     setNodeModalOpen(false);
   }
 
@@ -1672,6 +1781,10 @@ function App() {
                           setLearningNodeParent,
                           setNodeModalOpen,
                           timerLabel,
+                          expandedLearningNodes,
+                          toggleLearningNode,
+                          selectedLearningNodeId,
+                          setSelectedLearningNodeId,
                         )}
                         {activeNode && (
                           <div className="active-timer-bar">
@@ -2269,10 +2382,10 @@ function App() {
               <button
                 className="modal-close"
                 type="button"
-                aria-label="Close folder dialog"
+                aria-label="Close"
                 onClick={() => setNodeModalOpen(false)}
               >
-                Ã—
+                X
               </button>
             </div>
             <form onSubmit={(event) => void createLearningNode(event)}>
@@ -2310,6 +2423,138 @@ function App() {
                   setLearningNodePlanned(Number(event.target.value) || 5)
                 }
               />
+              {learningNodeType === "subject" && (
+                <div className="roadmap-fields">
+                  <label htmlFor="roadmap-description">
+                    Roadmap description
+                  </label>
+                  <textarea
+                    id="roadmap-description"
+                    rows={2}
+                    value={roadmapDescription}
+                    onChange={(event) =>
+                      setRoadmapDescription(event.target.value)
+                    }
+                    placeholder="What will this roadmap achieve?"
+                  />
+                  <div className="date-fields">
+                    <div>
+                      <label htmlFor="roadmap-start">Start date</label>
+                      <input
+                        id="roadmap-start"
+                        type="date"
+                        value={roadmapStartDate}
+                        onChange={(event) =>
+                          setRoadmapStartDate(event.target.value)
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="roadmap-target">Target date</label>
+                      <input
+                        id="roadmap-target"
+                        type="date"
+                        value={roadmapTargetDate}
+                        onChange={(event) =>
+                          setRoadmapTargetDate(event.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="date-fields">
+                    <div>
+                      <label htmlFor="roadmap-daily">
+                        Daily target minutes
+                      </label>
+                      <input
+                        id="roadmap-daily"
+                        type="number"
+                        min="0"
+                        value={roadmapDailyMinutes}
+                        onChange={(event) =>
+                          setRoadmapDailyMinutes(
+                            Number(event.target.value) || 0,
+                          )
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="roadmap-weekly">
+                        Weekly target minutes
+                      </label>
+                      <input
+                        id="roadmap-weekly"
+                        type="number"
+                        min="0"
+                        value={roadmapWeeklyMinutes}
+                        onChange={(event) =>
+                          setRoadmapWeeklyMinutes(
+                            Number(event.target.value) || 0,
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="date-fields">
+                    <div>
+                      <label htmlFor="roadmap-priority">Priority</label>
+                      <select
+                        id="roadmap-priority"
+                        value={roadmapPriority}
+                        onChange={(event) =>
+                          setRoadmapPriority(
+                            event.target.value as "Low" | "Medium" | "High",
+                          )
+                        }
+                      >
+                        <option>Low</option>
+                        <option>Medium</option>
+                        <option>High</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="roadmap-status">Status</label>
+                      <select
+                        id="roadmap-status"
+                        value={roadmapStatus}
+                        onChange={(event) =>
+                          setRoadmapStatus(
+                            event.target.value as LearningNode["roadmapStatus"],
+                          )
+                        }
+                      >
+                        <option>Not Started</option>
+                        <option>In Progress</option>
+                        <option>On Hold</option>
+                        <option>Completed</option>
+                        <option>Overdue</option>
+                      </select>
+                    </div>
+                  </div>
+                  <label htmlFor="roadmap-progress">Progress percentage</label>
+                  <input
+                    id="roadmap-progress"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={roadmapProgress}
+                    onChange={(event) =>
+                      setRoadmapProgress(Number(event.target.value) || 0)
+                    }
+                  />
+                  <label htmlFor="roadmap-milestones">
+                    Milestones (comma separated)
+                  </label>
+                  <input
+                    id="roadmap-milestones"
+                    value={roadmapMilestones}
+                    onChange={(event) =>
+                      setRoadmapMilestones(event.target.value)
+                    }
+                    placeholder="Variables, Loops, Functions"
+                  />
+                </div>
+              )}
               <div className="modal-actions">
                 <button
                   className="secondary-button"
@@ -2342,10 +2587,10 @@ function App() {
               <button
                 className="modal-close"
                 type="button"
-                aria-label="Close learning session dialog"
+                aria-label="Close"
                 onClick={() => setLearningModalOpen(false)}
               >
-                Ã—
+                X
               </button>
             </div>
             <form onSubmit={(event) => void createLearningSession(event)}>
@@ -2457,10 +2702,10 @@ function App() {
               <button
                 className="modal-close"
                 type="button"
-                aria-label="Close learning details"
+                aria-label="Close"
                 onClick={() => setSelectedLearningSession(null)}
               >
-                Ã—
+                X
               </button>
             </div>
             <p className="detail-task-title">{selectedLearningSession.goal}</p>
@@ -2563,10 +2808,10 @@ function App() {
               <button
                 className="modal-close"
                 type="button"
-                aria-label="Close new task dialog"
+                aria-label="Close"
                 onClick={() => setTaskModalOpen(false)}
               >
-                Ã—
+                X
               </button>
             </div>
             <form onSubmit={(event) => void createTask(event)}>
@@ -2718,10 +2963,10 @@ function App() {
               <button
                 className="modal-close"
                 type="button"
-                aria-label="Cancel closing task"
+                aria-label="Close"
                 onClick={() => setClosureTask(null)}
               >
-                Ã—
+                X
               </button>
             </div>
             <p className="detail-task-title">{closureTask.title}</p>
@@ -2778,10 +3023,10 @@ function App() {
               <button
                 className="modal-close"
                 type="button"
-                aria-label="Close task details"
+                aria-label="Close"
                 onClick={() => setSelectedTask(null)}
               >
-                Ã—
+                X
               </button>
             </div>
             <div className="detail-summary">
@@ -2966,10 +3211,10 @@ function App() {
               <button
                 className="modal-close"
                 type="button"
-                aria-label="Close profile dialog"
+                aria-label="Close"
                 onClick={() => setProfileOpen(false)}
               >
-                Ã—
+                X
               </button>
             </div>
             <form onSubmit={saveProfile}>
@@ -3023,10 +3268,10 @@ function App() {
               <button
                 className="modal-close"
                 type="button"
-                aria-label="Close account dialog"
+                aria-label="Close"
                 onClick={() => setProfileOpen(false)}
               >
-                Ã—
+                X
               </button>
             </div>
             <form onSubmit={saveProfile}>

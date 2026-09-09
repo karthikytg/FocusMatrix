@@ -591,12 +591,81 @@
   font-size: 22px;
 }
 .modal-close {
-  border: 0;
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: 7px;
   background: transparent;
-  color: #8d9995;
-  font-size: 25px;
+  color: #65746e;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.modal-close:hover {
+  background: #eef5f1;
+  color: var(--green);
+  border-color: #d8e8e0;
+}
+.modal-close:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+}
+.roadmap-fields {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.roadmap-fields label {
+  display: block;
+  margin: 9px 0 6px;
+  color: #5f6d69;
+  font-size: 10px;
+  font-weight: 700;
+}
+.roadmap-fields input,
+.roadmap-fields textarea,
+.roadmap-fields select {
+  width: 100%;
+  border: 1px solid #d8e2de;
+  border-radius: 6px;
+  padding: 9px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+}
+.tree-toggle {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-size: 13px;
+  cursor: pointer;
+}
+.learning-subject.selected,
+.learning-day.selected,
+.learning-topic.selected {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px #1e6e5a1a;
+}
+.learning-subject.selected {
+  background: #f1f8f4;
+}
+.learning-day.selected {
+  background: #f5faf7;
+}
+.learning-topic.selected {
+  background: #e7f1ed;
 }
 .task-modal form > label {
   display: block;

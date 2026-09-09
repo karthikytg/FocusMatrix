@@ -81,6 +81,17 @@ export type LearningNode = {
   actualMinutes: number;
   status: LearningStatus;
   notes?: string;
+  description?: string;
+  startDate?: string;
+  targetDate?: string;
+  dailyTargetMinutes?: number;
+  weeklyTargetMinutes?: number;
+  priority?: "Low" | "Medium" | "High";
+  roadmapStatus?:
+    "Not Started" | "In Progress" | "On Hold" | "Completed" | "Overdue";
+  progressPercent?: number;
+  milestones?: string[];
+  reminderAt?: string;
   createdAt: string;
 };
 
