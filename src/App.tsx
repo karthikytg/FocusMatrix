@@ -474,6 +474,33 @@ function App() {
   const [pageSize, setPageSize] = useState(10);
   const [pageByList, setPageByList] = useState<Record<string, number>>({});
 
+  const hasOpenDialog = Boolean(
+    deleteNodeTarget || isNodeModalOpen || isLearningModalOpen ||
+    learningHistoryNode || selectedLearningSession || isTaskModalOpen ||
+    closureTask || selectedTask || isProfileOpen,
+  );
+
+  useEffect(() => {
+    if (!hasOpenDialog) return;
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        if (deleteNodeTarget) setDeleteNodeTarget(null);
+        else if (isNodeModalOpen) setNodeModalOpen(false);
+        else if (isLearningModalOpen) setLearningModalOpen(false);
+        else if (learningHistoryNode) setLearningHistoryNode(null);
+        else if (selectedLearningSession) setSelectedLearningSession(null);
+        else if (isTaskModalOpen) setTaskModalOpen(false);
+        else if (closureTask) setClosureTask(null);
+        else if (selectedTask) setSelectedTask(null);
+        else if (isProfileOpen) setProfileOpen(false);
+      }
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKeyDown);
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener("keydown", onKeyDown); };
+  }, [hasOpenDialog, deleteNodeTarget, isNodeModalOpen, isLearningModalOpen, learningHistoryNode, selectedLearningSession, isTaskModalOpen, closureTask, selectedTask, isProfileOpen]);
+
   useEffect(() => {
     void db.tasks.orderBy("createdAt").reverse().toArray().then(setTasks);
     void db.learningSessions

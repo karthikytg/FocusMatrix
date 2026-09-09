@@ -571,21 +571,34 @@
   z-index: 10;
   display: grid;
   place-items: center;
+  overflow: hidden;
   padding: 20px;
   background: #20352f66;
 }
 .task-modal {
   width: min(100%, 440px);
+  max-height: 90vh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   border-radius: 12px;
   background: white;
-  padding: 25px;
+  padding: 0;
   box-shadow: 0 20px 70px #20352f33;
+  overflow: hidden;
 }
 .modal-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 22px;
+  flex: 0 0 auto;
+  padding: 22px 25px 16px;
+  margin: 0;
+  background: white;
+  border-bottom: 1px solid #edf1ef;
 }
 .modal-heading h2 {
   margin: 0;
@@ -675,6 +688,15 @@
   font-weight: 700;
   margin-bottom: 8px;
 }
+.task-modal > form { min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 25px 25px; scrollbar-gutter: stable; }
+.task-modal > form > label:first-child { margin-top: 18px; }
+.task-modal .modal-actions { position: sticky; bottom: 0; z-index: 2; margin: 22px -25px -25px; padding: 14px 25px; background: #ffffffed; border-top: 1px solid #edf1ef; }
+.detail-modal { padding: 0; }
+.detail-modal > :not(.modal-heading) { margin-left: 25px; margin-right: 25px; }
+.detail-modal > .detail-section:last-child { padding-bottom: 25px; }
+.detail-modal .modal-heading { margin: 0; }
+.detail-modal { overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
+.detail-modal .inline-detail-form { padding-bottom: 4px; }
 .task-modal input[type="text"],
 .task-modal input:not([type]) {
   width: 100%;
@@ -1134,6 +1156,16 @@ button:focus-visible {
     width: 100%;
     justify-content: center;
   }
+}
+@media (max-width: 700px) {
+  .modal-backdrop { align-items: flex-end; padding: 0; }
+  .task-modal, .detail-modal { width: 100%; max-width: none; max-height: 94vh; border-radius: 14px 14px 0 0; }
+  .modal-heading { padding: 16px 18px 13px; }
+  .task-modal > form { padding-left: 18px; padding-right: 18px; padding-bottom: 18px; }
+  .task-modal .modal-actions { margin-left: -18px; margin-right: -18px; padding-left: 18px; padding-right: 18px; }
+  .detail-modal > :not(.modal-heading) { margin-left: 18px; margin-right: 18px; }
+  .detail-modal .modal-actions { flex-wrap: wrap; }
+  .detail-modal .modal-actions > button { flex: 1 1 100%; justify-content: center; }
 }
 @media (max-width: 860px) {
   .sidebar {
