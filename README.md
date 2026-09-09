@@ -4,7 +4,7 @@ Eisenhower Productivity & Task Management System, designed to run locally and of
 
 ## Current status
 
-The current vertical slice includes a responsive dashboard, local task creation/completion/reopen, Eisenhower quadrant classification, due dates, local reminders, recurring reminder scheduling, navigation views, local profile names, optional Supabase authentication, and a portable Electron desktop build.
+The current vertical slice includes a responsive dashboard, local task creation/completion/reopen, Eisenhower quadrant classification, due dates, local reminders, recurring reminder scheduling, navigation views, unified task tables with status editing, filtered analytics with XLSX export, local profile names, optional Supabase authentication, and a portable Electron desktop build.
 
 The larger product brief is not fully implemented. Projects, habits, full calendar interactions, advanced analytics, backup/restore, import/export, cloud task synchronization, and the complete automated test suite remain future work.
 

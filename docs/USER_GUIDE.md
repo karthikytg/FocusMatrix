@@ -57,3 +57,9 @@ The Today's focus card selects a deterministic thought from a built-in list usin
 ## Offline and hosted use
 
 The application works locally without an account. Hosted deployments still store task data in IndexedDB in the user's browser. Signing in with Supabase does not currently synchronize tasks between devices.
+
+## Analytics and Excel export
+
+Open **Analytics** to filter tasks by due/created date range, quadrant, and status. The page updates total, completed, pending, overdue, completion rate, quadrant distribution, status distribution, closed-vs-pending comparison, and date-based completion trends immediately when task data changes.
+
+Select **Export XLSX** to download the currently filtered task set. The spreadsheet includes serial number, task, quadrant, date, closed date, status, and reminder details.
