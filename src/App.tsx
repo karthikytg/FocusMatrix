@@ -9,6 +9,7 @@
   ClipboardList,
   Clock3,
   Focus,
+  FileBarChart,
   Grid2X2,
   ListTodo,
   Plus,
@@ -54,11 +55,12 @@ import "./App.css";
 
 const navigation = [
   { label: "Dashboard", icon: Target },
-  { label: "Matrix", icon: Grid2X2 },
+  { label: "Focus Matrix", icon: Grid2X2 },
   { label: "Tasks", icon: ListTodo },
   { label: "Calendar", icon: CalendarDays },
   { label: "Analytics", icon: BarChart3 },
   { label: "Planner", icon: ClipboardList },
+  { label: "Reports", icon: FileBarChart },
 ];
 
 const focusAreas: Array<{
@@ -131,6 +133,9 @@ function renderLearningTree(
   toggleNode: (nodeId: string) => void,
   selectedNodeId: string | undefined,
   setSelectedNodeId: (nodeId: string) => void,
+  nodeMenuId: string | undefined,
+  setNodeMenuId: (nodeId: string | undefined) => void,
+  requestDeleteNode: (node: LearningNode) => void,
 ) {
   const subjects = learningNodes.filter((node) => node.type === "subject");
   return subjects.length ? (
@@ -171,6 +176,7 @@ function renderLearningTree(
             >
               Create Subfolder
             </button>
+            <div className="node-actions"><button className="node-menu-button" type="button" aria-label={`Actions for ${subject.name}`} onClick={(event) => { event.stopPropagation(); setNodeMenuId(nodeMenuId === subject.id ? undefined : subject.id); }}>...</button>{nodeMenuId === subject.id && <div className="node-menu"><button type="button" onClick={(event) => { event.stopPropagation(); requestDeleteNode(subject); setNodeMenuId(undefined); }}>Delete</button><button type="button">Archive</button><button type="button">Duplicate</button></div>}</div>
           </div>
           {expandedNodes[subject.id] &&
             days.map((day) => {
@@ -252,6 +258,7 @@ function renderLearningTree(
                     >
                       Add Topic
                     </button>
+                    <div className="node-actions"><button className="node-menu-button" type="button" aria-label={`Actions for ${day.name}`} onClick={(event) => { event.stopPropagation(); setNodeMenuId(nodeMenuId === day.id ? undefined : day.id); }}>...</button>{nodeMenuId === day.id && <div className="node-menu"><button type="button" onClick={(event) => { event.stopPropagation(); requestDeleteNode(day); setNodeMenuId(undefined); }}>Delete</button><button type="button">Archive</button><button type="button">Duplicate</button></div>}</div>
                   </div>
                   {expandedNodes[day.id] &&
                     topics.map((topic) => (
@@ -309,6 +316,7 @@ function renderLearningTree(
                             <Play size={13} />
                           </button>
                         )}
+                        <div className="node-actions"><button className="node-menu-button" type="button" aria-label={`Actions for ${topic.name}`} onClick={(event) => { event.stopPropagation(); setNodeMenuId(nodeMenuId === topic.id ? undefined : topic.id); }}>...</button>{nodeMenuId === topic.id && <div className="node-menu"><button type="button" onClick={(event) => { event.stopPropagation(); requestDeleteNode(topic); setNodeMenuId(undefined); }}>Delete</button><button type="button">Archive</button><button type="button">Duplicate</button></div>}</div>
                       </div>
                     ))}
                 </div>
@@ -342,12 +350,8 @@ function renderLearningTree(
 function App() {
   const legacyPlannerSection: string = "__legacy-planner__";
   const [activeSection, setActiveSection] = useState("Dashboard");
-  const [plannerTab, setPlannerTab] = useState<
-    "Dashboard" | "Roadmaps" | "Calendar" | "Reports"
-  >(
-    () =>
-      (localStorage.getItem("focusmatrix-planner-tab") as
-        "Dashboard" | "Roadmaps" | "Calendar" | "Reports") ?? "Dashboard",
+  const [plannerTab, setPlannerTab] = useState<"Dashboard" | "Roadmaps">(
+    () => localStorage.getItem("focusmatrix-planner-tab") === "Roadmaps" ? "Roadmaps" : "Dashboard",
   );
   const [selectedQuadrant, setSelectedQuadrant] = useState<Quadrant | null>(
     null,
@@ -421,6 +425,8 @@ function App() {
   );
   const [selectedLearningNodeId, setSelectedLearningNodeId] =
     useState<string>();
+  const [nodeMenuId, setNodeMenuId] = useState<string>();
+  const [deleteNodeTarget, setDeleteNodeTarget] = useState<LearningNode | null>(null);
   const [isLearningModalOpen, setLearningModalOpen] = useState(false);
   const [selectedLearningSession, setSelectedLearningSession] =
     useState<LearningSession | null>(null);
@@ -460,6 +466,8 @@ function App() {
   const [analyticsStatus, setAnalyticsStatus] = useState<TaskStatus | "ALL">(
     "ALL",
   );
+  const [calendarSource, setCalendarSource] = useState<"ALL" | "FOCUS" | "PLANNER">("ALL");
+  const [reportSource, setReportSource] = useState<"ALL" | "FOCUS" | "PLANNER">("ALL");
   const [pageSize, setPageSize] = useState(10);
   const [pageByList, setPageByList] = useState<Record<string, number>>({});
 
@@ -489,7 +497,7 @@ function App() {
   }
 
   function selectPlannerTab(
-    tab: "Dashboard" | "Roadmaps" | "Calendar" | "Reports",
+    tab: "Dashboard" | "Roadmaps",
   ) {
     setPlannerTab(tab);
     localStorage.setItem("focusmatrix-planner-tab", tab);
@@ -1058,6 +1066,35 @@ function App() {
       ),
     );
     setActiveTimer(null);
+  }
+
+  function requestDeleteNode(node: LearningNode) {
+    if (activeTimer?.nodeId === node.id) {
+      window.alert("Stop and save the active timer before deleting this item.");
+      return;
+    }
+    setDeleteNodeTarget(node);
+  }
+
+  async function confirmDeleteNode() {
+    if (!deleteNodeTarget) return;
+    const rootId = deleteNodeTarget.id;
+    const descendants = learningNodes.filter((item) => {
+      let parentId = item.parentId;
+      while (parentId) {
+        if (parentId === rootId) return true;
+        parentId = learningNodes.find((candidate) => candidate.id === parentId)?.parentId;
+      }
+      return false;
+    });
+    const ids = new Set([rootId, ...descendants.map((item) => item.id)]);
+    const relatedSessions = studySessions.filter((session) => ids.has(session.subjectId) || (session.dayId && ids.has(session.dayId)) || (session.topicId && ids.has(session.topicId)));
+    await db.learningNodes.bulkDelete([...ids]);
+    await db.studySessions.bulkDelete(relatedSessions.map((session) => session.id));
+    setLearningNodes((current) => current.filter((item) => !ids.has(item.id)));
+    setStudySessions((current) => current.filter((session) => !relatedSessions.some((item) => item.id === session.id)));
+    if (selectedLearningNodeId && ids.has(selectedLearningNodeId)) setSelectedLearningNodeId(undefined);
+    setDeleteNodeTarget(null);
   }
 
   function timerLabel(seconds: number) {
@@ -1933,8 +1970,6 @@ function App() {
                           [
                             "Dashboard",
                             "Roadmaps",
-                            "Calendar",
-                            "Reports",
                           ] as const
                         ).map((tab) => (
                           <button
@@ -2013,7 +2048,7 @@ function App() {
                           </div>
                         </div>
                       )}
-                      {plannerTab === "Calendar" && (
+                      {plannerTab === legacyPlannerSection && (
                         <div className="planner-calendar-panel">
                           <div className="panel-heading">
                             <div>
@@ -2045,7 +2080,7 @@ function App() {
                           )}
                         </div>
                       )}
-                      {plannerTab === "Reports" && (
+                      {plannerTab === legacyPlannerSection && (
                         <div className="planner-reports-panel">
                           <div className="panel-heading">
                             <div>
@@ -2204,6 +2239,9 @@ function App() {
                               toggleLearningNode,
                               selectedLearningNodeId,
                               setSelectedLearningNodeId,
+                              nodeMenuId,
+                              setNodeMenuId,
+                              requestDeleteNode,
                             )}
                           </div>
                         </>
@@ -2414,7 +2452,7 @@ function App() {
                     </div>
                   );
                 })()}
-              {activeSection === "Matrix" && (
+              {activeSection === "Focus Matrix" && (
                 <div className="quadrant-grid section-view-grid">
                   {focusAreas.map((area) => {
                     const areaTasks = openTasks.filter(
@@ -2469,28 +2507,11 @@ function App() {
               )}
               {activeSection === "Calendar" && (
                 <div className="calendar-view">
-                  <p className="eyebrow">
-                    {new Date().toLocaleDateString(undefined, {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
-                  <h2>Scheduled task dates</h2>
-                  {calendarTasks.length ? (
-                    getPage("calendar", calendarTasks).pageItems.map((task) => (
-                      <div className="section-task-row" key={task.id}>
-                        <CalendarDays size={16} />
-                        <span className="task-name">{task.title}</span>
-                        <strong>{task.dueDate}</strong>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="completed-empty">
-                      No tasks have a due date yet.
-                    </p>
-                  )}
-                  {calendarTasks.length > 0 &&
-                    renderPagination("calendar", calendarTasks.length)}
+                  <div className="calendar-toolbar"><div><p className="eyebrow">Unified calendar</p><h2>Work Week</h2></div><label>Source<select value={calendarSource} onChange={(event) => setCalendarSource(event.target.value as "ALL" | "FOCUS" | "PLANNER")}><option value="ALL">All</option><option value="FOCUS">Focus Matrix</option><option value="PLANNER">Planner</option></select></label></div>
+                  <div className="calendar-week-label">Monday - Tuesday - Wednesday - Thursday - Friday</div>
+                  {calendarSource !== "PLANNER" && calendarTasks.length > 0 && <><h3 className="calendar-source-heading">Focus Matrix</h3>{getPage("calendar-focus", calendarTasks).pageItems.map((task) => <div className="section-task-row calendar-event focus-event" key={`focus-${task.id}`}><CalendarDays size={16} /><span className="task-name">{task.title}</span><span>{task.dueDate}</span><strong>{taskStatus(task)}</strong></div>)}{renderPagination("calendar-focus", calendarTasks.length)}</>}
+                  {calendarSource !== "FOCUS" && learningSessions.length > 0 && <><h3 className="calendar-source-heading">Planner</h3>{getPage("calendar-planner", learningSessions).pageItems.map((session) => <div className="section-task-row calendar-event planner-event" key={`planner-${session.id}`}><CalendarDays size={16} /><span className="task-name">{session.topic}</span><span>{session.date} {session.startTime ?? ""}</span><strong>{session.status}</strong></div>)}{renderPagination("calendar-planner", learningSessions.length)}</>}
+                  {calendarTasks.length === 0 && learningSessions.length === 0 && <p className="completed-empty">No calendar items have been scheduled.</p>}
                 </div>
               )}
               {activeSection === "Analytics" && (
@@ -2759,10 +2780,12 @@ function App() {
                   {renderTaskTable(analyticsTasks, "analytics")}
                 </div>
               )}
+              {activeSection === "Reports" && <div className="reports-view"><div className="analytics-toolbar"><div><p className="eyebrow">Detailed reporting</p><h2>Reports</h2></div><div className="analytics-export-actions"><button className="primary-button" type="button" onClick={exportAnalytics}>Export Focus Matrix XLSX</button><button className="secondary-button" type="button" onClick={exportLearningAnalytics}>Export Planner XLSX</button></div></div><div className="reports-filters"><label>Source<select value={reportSource} onChange={(event) => setReportSource(event.target.value as "ALL" | "FOCUS" | "PLANNER")}><option value="ALL">All</option><option value="FOCUS">Focus Matrix</option><option value="PLANNER">Planner</option></select></label></div>{reportSource !== "PLANNER" && renderTaskTable(tasks, "reports-focus")}{reportSource !== "FOCUS" && <div className="planner-reports-panel"><div className="panel-heading"><div><p className="eyebrow">Planner</p><h2>Study sessions</h2></div><button className="secondary-button" type="button" onClick={exportLearningAnalytics}>Export Planner XLSX</button></div>{learningSessions.length ? learningSessions.map((session) => <div className="section-task-row" key={session.id}><span className="task-name">{session.topic}</span><span>{session.date}</span><span>{session.actualMinutes} / {session.plannedMinutes} min</span><strong>{session.status}</strong></div>) : <p className="completed-empty">No Planner records yet.</p>}</div>}</div>}
             </section>
           )}
         </div>
       </main>
+      {deleteNodeTarget && <div className="modal-backdrop" role="presentation"><div className="task-modal delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-node-title"><div className="modal-heading"><div><p className="eyebrow">Learning folders</p><h2 id="delete-node-title">Delete "{deleteNodeTarget.name}"?</h2></div><button className="modal-close" type="button" aria-label="Close" onClick={() => setDeleteNodeTarget(null)}>X</button></div><p className="delete-warning">This will delete its child folders/topics and related study-session history. Archiving is safer when historical data matters.</p><div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setDeleteNodeTarget(null)}>Cancel</button><button className="danger-button" type="button" onClick={() => void confirmDeleteNode()}>Delete</button></div></div></div>}
       {isNodeModalOpen && (
         <div className="modal-backdrop" role="presentation">
           <div
